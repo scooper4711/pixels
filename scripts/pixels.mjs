@@ -108,32 +108,32 @@ Hooks.on("init", function () {
 Hooks.on('getSceneControlButtons', (controls) => {
   if (!canvas) return;
 
-  CONFIG.Canvas.layers.pixelsConfig = {layerClass: InteractionLayer, group: "interface"};
+  CONFIG.Canvas.layers.pixelsConfig = {layerClass: foundry.canvas.layers.InteractionLayer, group: "interface"};
 
-  controls.push({
+  controls.pixelsControl = {
     name: 'pixelsControl',
     title: 'PIXELS.SCENE_CONTROL.CONTROL.Title',
     layer: 'pixelsConfig',
     icon: 'pixels-dice-icon', // Font-Awesome alternatives: 'fa-brands fa-connectdevelop' or 'fa-sharp-duotone fa-thin fa-dice-d20',
     visible: game.settings.get("pixels", "enabled") && game.settings.get("pixels", "enableSceneControls"),
-    tools: [
-      {
+    tools: {
+      pixelConfig: {
         name: 'pixelConfig',
         title: 'PIXELS.SCENE_CONTROL.TOOL_CONFIG.Title',
         icon: 'fa-regular fa-bluetooth',
         visible: true,
         button: true,
-        onClick: () => {
+        onChange: () => {
           api.openPixelsConfiguration();
         }
       },
-      {
+      pixelReconnect: {
         name: 'pixelReconnect',
         title: 'PIXELS.SCENE_CONTROL.TOOL_RECONNECT.Title',
         icon: 'fas fa-refresh',
         visible: true,
         button: true,
-        onClick: async () => {
+        onChange: async () => {
           if (pixelsDice.PIXELS.size <= 0) {
             return ui.notifications.warn(game.i18n.localize('PIXELS.SCENE_CONTROL.TOOL_RECONNECT.Notifications.NoDevices'));
           }
@@ -144,9 +144,8 @@ Hooks.on('getSceneControlButtons', (controls) => {
             ui.notifications.warn(game.i18n.localize('PIXELS.SCENE_CONTROL.TOOL_RECONNECT.Notifications.Failure'));
         }
       }
-    ],
-    activeTool: 'pixelConfig'
-  });
+    }
+  };
 });
 
 /* -------------------------------------------- */
