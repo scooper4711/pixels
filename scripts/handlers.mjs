@@ -219,12 +219,9 @@ function handleRolls(groups) {
   }
 }
 
+/* -------------------------------------------- */
+
 // Exporting this function so it can be used via macro: game.modules.get("pixels").api.openPixelsConfiguration();
 export function openPixelsConfiguration() {
-  new PixelsConfiguration().render(true);
-}
-
-// Exporting this function so it can be used via macro: game.modules.get("pixels").api.reconnectPixels();
-export async function reconnectPixels() {
-  return await PixelsManager.fromSetting().tryReconnect();
+  new PixelsConfiguration().render({ force: true });
 }

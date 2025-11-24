@@ -21,7 +21,6 @@ Hooks.on("init", function () {
     onChange: enabled => {
       module.enabled = enabled;
       _initialize(enabled);
-      canvas?.draw();
     }
   });
 
@@ -43,40 +42,19 @@ Hooks.on("init", function () {
     default: {}
   });
 
-  // Enable button in scene controls
-  game.settings.register("pixels", "enableSceneControls", {
-    scope: "client",
-    name: "PIXELS.SETTINGS.ENABLE_SCENE_CONTROLS.Name",
-    hint: "PIXELS.SETTINGS.ENABLE_SCENE_CONTROLS.Hint",
-    config: true,
-    type: Boolean,
-    default: true,
-    onChange: enabled => {
-      canvas?.draw();
-    }
-  });
-
   // Heartbeat interval
   game.settings.register("pixels", "heartBeatInterval", {
     scope: "client",
     name: "PIXELS.SETTINGS.HEARTBEAT.Name",
     hint: "PIXELS.SETTINGS.HEARTBEAT.Hint",
     config: true,
-    type: Number,
-    default: 0,
-    range: {
-      min: 0,
-      max: 60,
-      step: 1
-    },
+    type: new foundry.data.fields.NumberField({
+      required: true, nullable: false, integer: true, min: 0, max: 60, step: 1, initial: 0
+    }),
     onChange: heartBeatInterval => {
-      if (reconnectInterval) {
-        clearInterval(reconnectInterval);
-      }
-      if (heartBeatInterval > 0) {
-        reconnectInterval = setInterval(async () => {
-          await api.reconnectPixels();
-        }, heartBeatInterval * 60000);
+      clearInterval(reconnectInterval);
+      if ( heartBeatInterval ) {
+        reconnectInterval = setInterval(() => pixelsDice.PIXELS.tryReconnect(), heartBeatInterval * 60_000);
       }
     }
   });
@@ -91,7 +69,7 @@ Hooks.on("init", function () {
   });
 
   // Core Dice Configuration
-  CONFIG.Dice.fulfillment.methods.pixels = {label: "Pixels - Electronic Dice", interactive: true};
+  CONFIG.Dice.fulfillment.methods.pixels = { label: "Pixels - Electronic Dice", interactive: true };
 
   // Register module properties
   const module = globalThis.pixelsDice = game.modules.get("pixels");
@@ -102,57 +80,10 @@ Hooks.on("init", function () {
 });
 
 /* -------------------------------------------- */
-/*  Add Pixels Control Button                   */
-/* -------------------------------------------- */
-
-Hooks.on('getSceneControlButtons', (controls) => {
-  if (!canvas) return;
-
-  CONFIG.Canvas.layers.pixelsConfig = {layerClass: foundry.canvas.layers.InteractionLayer, group: "interface"};
-
-  controls.pixelsControl = {
-    name: 'pixelsControl',
-    title: 'PIXELS.SCENE_CONTROL.CONTROL.Title',
-    layer: 'pixelsConfig',
-    icon: 'pixels-dice-icon', // Font-Awesome alternatives: 'fa-brands fa-connectdevelop' or 'fa-sharp-duotone fa-thin fa-dice-d20',
-    visible: game.settings.get("pixels", "enabled") && game.settings.get("pixels", "enableSceneControls"),
-    tools: {
-      pixelConfig: {
-        name: 'pixelConfig',
-        title: 'PIXELS.SCENE_CONTROL.TOOL_CONFIG.Title',
-        icon: 'fa-regular fa-bluetooth',
-        visible: true,
-        button: true,
-        onChange: () => {
-          api.openPixelsConfiguration();
-        }
-      },
-      pixelReconnect: {
-        name: 'pixelReconnect',
-        title: 'PIXELS.SCENE_CONTROL.TOOL_RECONNECT.Title',
-        icon: 'fas fa-refresh',
-        visible: true,
-        button: true,
-        onChange: async () => {
-          if (pixelsDice.PIXELS.size <= 0) {
-            return ui.notifications.warn(game.i18n.localize('PIXELS.SCENE_CONTROL.TOOL_RECONNECT.Notifications.NoDevices'));
-          }
-
-          if (await api.reconnectPixels() === true)
-            ui.notifications.info(pixelsDice.PIXELS.size + game.i18n.localize('PIXELS.SCENE_CONTROL.TOOL_RECONNECT.Notifications.Reconnect'));
-          else
-            ui.notifications.warn(game.i18n.localize('PIXELS.SCENE_CONTROL.TOOL_RECONNECT.Notifications.Failure'));
-        }
-      }
-    }
-  };
-});
-
-/* -------------------------------------------- */
 /*  Client Ready                                */
 /* -------------------------------------------- */
 
-Hooks.on("ready", function () {
+Hooks.on("ready", function() {
   const enabled = pixelsDice.enabled = game.settings.get("pixels", "enabled");
   return _initialize(enabled);
 });
@@ -161,26 +92,20 @@ Hooks.on("ready", function () {
 
 async function _initialize(enabled) {
   // Automatic connection to available dice
-  if (!enabled) return;
+  if ( !enabled ) return;
 
   const reconnectSuccess = await pixelsDice.PIXELS.tryReconnect();
 
-  if (!reconnectSuccess) {
-    ui.notifications.warn("PIXELS.ERRORS.ReconnectFailed", {localize: true});
+  if ( !reconnectSuccess ) {
+    ui.notifications.warn("PIXELS.ERRORS.ReconnectFailed", { localize: true });
     const app = new PixelsConfiguration(pixelsDice.PIXELS);
     app.render(true);
   }
 
   // Schedule the reconnectPixels function to run every x minutes based on client settings
   const heartBeatInterval = game.settings.get("pixels", "heartBeatInterval");
-  if (heartBeatInterval > 0) {
-    if (reconnectInterval) {
-      clearInterval(reconnectInterval);
-    }
-    if (heartBeatInterval > 0) {
-      reconnectInterval = setInterval(async () => {
-        await api.reconnectPixels();
-      }, heartBeatInterval * 60000);
-    }
+  if ( heartBeatInterval ) {
+    clearInterval(reconnectInterval);
+    reconnectInterval = setInterval(() => pixelsDice.PIXELS.tryReconnect(), heartBeatInterval * 60_000);
   }
 }
